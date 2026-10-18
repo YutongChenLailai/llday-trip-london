@@ -21,22 +21,33 @@ L.control.zoom({position:'bottomright'}).addTo(map);
 function resetMap(){map.fitBounds(mapBounds,{padding:[12,12]});}
 resetMap();
 const pins=L.layerGroup().addTo(map), placePins=L.layerGroup().addTo(map);
+const memoryMap=L.map('memory-map',{scrollWheelZoom:false,minZoom:6,maxZoom:12});
+memoryMap.createPane('fallback');memoryMap.getPane('fallback').style.zIndex='190';
+L.imageOverlay(mapArtwork,mapBounds,{pane:'fallback',interactive:false}).addTo(memoryMap);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'}).addTo(memoryMap);
+const memoryPins=L.layerGroup().addTo(memoryMap);memoryMap.fitBounds(mapBounds);memoryMap.on('zoomend',renderMemoryPins);
+new ResizeObserver(()=>{memoryMap.invalidateSize();memoryMap.fitBounds(mapBounds);}).observe($('memory-map'));
 function showPlace(place){
   selectedPlace=place;
   uiText($('destination'),place.name);uiText($('destination-note'),place.note,place.noteZh);uiText($('rail-note'),`By rail → ${place.station}`,`乘火车前往 ${place.zh}`);$('rail-source').href=place.source;
   $('explore').href=`https://www.google.com/maps/dir/?api=1&origin=London&destination=${encodeURIComponent(place.station+", England")}&travelmode=transit`;
   uiText($('visit-result'),visited.has(place.name)?'✓ Visited · undo':'✓ Mark as visited');
   $('visit-result').classList.toggle('is-visited',visited.has(place.name));
-  $('result').hidden=false;
+
 }
+function syncVisitedButtons(){
+  if(selectedPlace){uiText($('visit-result'),visited.has(selectedPlace.name)?'✓ Visited · undo':'✓ Mark as visited');$('visit-result').classList.toggle('is-visited',visited.has(selectedPlace.name));}
+  document.querySelectorAll('#throw-history button').forEach(button=>{const done=visited.has(button.dataset.place);button.setAttribute('aria-pressed',String(done));button.classList.toggle('is-visited',done);});
+}
+function closeReveal(){clearInterval(rollTimer);$('result').close();$('result').classList.remove('rolling');$('result').setAttribute('aria-busy','false');}
 function celebrate(place){
   focusHit(place);
   const burst=$('celebration');burst.replaceChildren();
   if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  for(let i=0;i<24;i++){
-    const piece=document.createElement('i'),angle=i*Math.PI/12;
-    piece.style.setProperty('--x',`${Math.cos(angle)*(80+i%4*22)}px`);
-    piece.style.setProperty('--y',`${Math.sin(angle)*70+40}px`);
+  for(let i=0;i<40;i++){
+    const piece=document.createElement('i'),angle=i*Math.PI/20;
+    piece.style.setProperty('--x',`${Math.cos(angle)*(innerWidth*.45+i%4*18)}px`);
+    piece.style.setProperty('--y',`${Math.sin(angle)*innerHeight*.45+60}px`);
     piece.style.setProperty('--spin',`${i*47}deg`);
     piece.style.background=['#ffff18','#3d55f5','#ff5a42','#00a878'][i%4];burst.append(piece);
   }
@@ -44,12 +55,13 @@ function celebrate(place){
 }
 function rollDestination(place,ticket){
   clearInterval(rollTimer);showPlace(place);$('celebration').replaceChildren();
+  if(!$('result').open)$('result').showModal();
   const result=$('result'),badge=document.querySelector('.map-badge');badge.classList.add('roll-badge');
-  result.classList.remove('settled');result.classList.add('rolling');result.setAttribute('aria-busy','true');
+  $('close-result').disabled=true;result.classList.remove('settled');result.classList.add('rolling');result.setAttribute('aria-busy','true');
   const finish=()=>{
-    showPlace(place);uiText(badge,place.name,place.zh);result.classList.remove('rolling');result.setAttribute('aria-busy','false');celebrate(place);
+    showPlace(place);$('close-result').disabled=false;uiText(badge,place.name,place.zh);result.classList.remove('rolling');result.setAttribute('aria-busy','false');celebrate(place);
     status(`Throw ${String(throwCount).padStart(2,'0')} · ${place.name} · a new place to go.`);
-    const item=document.createElement('li');uiText(item,place.name,place.zh);$('throw-history').prepend(item);$('throw-history-panel').hidden=false;
+    const item=document.createElement('li'),button=document.createElement('button');button.dataset.place=place.name;uiText(button,place.name,place.zh);button.addEventListener('click',()=>toggleVisited(place));item.append(button);$('throw-history').prepend(item);$('throw-history-panel').hidden=false;syncVisitedButtons();
   };
   if(matchMedia('(prefers-reduced-motion: reduce)').matches){finish();return;}
   const candidates=places.filter(p=>!visited.has(p.name));let step=0;
@@ -61,8 +73,8 @@ function rollDestination(place,ticket){
 }
 function renderProgress(){
   uiText($('visited-count'),`${visited.size} / ${places.length}`);
-  const list=$('place-list');list.replaceChildren();
-  places.forEach((place,index)=>{
+  const list=$('place-list');
+  if(!list.children.length)places.forEach((place,index)=>{
     const done=visited.has(place.name);
     const label=document.createElement('label');label.className=`place-item${done?' is-visited':''}`;
     const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=done;checkbox.setAttribute('aria-label',`Visited ${place.name}`);
@@ -73,21 +85,26 @@ function renderProgress(){
     label.append(checkbox,dot,name,number);list.append(label);
 
   });
-  renderMapPins();
+  [...list.children].forEach((label,index)=>{const done=visited.has(places[index].name);label.classList.toggle('is-visited',done);label.querySelector('input').checked=done;});
+  syncVisitedButtons();renderMapPins();renderMemoryPins();
 }
-function renderMapPins(){
-  placePins.clearLayers();
-  const groups=groupPlaces(places.filter(place=>place.name!==hitPlace?.name),place=>map.latLngToContainerPoint([place.lat,place.lng]));
-  if(hitPlace)groups.push({places:[hitPlace]});
+function renderMapPins(){renderDestinationPins(map,placePins,hitPlace);}
+function renderMemoryPins(){renderDestinationPins(memoryMap,memoryPins,null);}
+function renderDestinationPins(targetMap,layer,focusedPlace){
+  layer.clearLayers();
+  const groups=groupPlaces(places.filter(place=>place.name!==focusedPlace?.name),place=>targetMap.latLngToContainerPoint([place.lat,place.lng]));
+  if(focusedPlace)groups.push({places:[focusedPlace]});
   for(const group of groups){
     if(group.places.length>1){
-      const names=group.places.map(p=>p.name).join(', '),position=map.containerPointToLatLng([group.x,group.y]);
-      L.marker(position,{icon:L.divIcon({className:'map-cluster',html:`<span>+${group.places.length}</span>`,iconSize:[28,28],iconAnchor:[14,14]}),title:`${group.places.length} destinations: ${names}. Zoom in.`,alt:`Zoom to ${names}`}).addTo(placePins).bindTooltip(uiLabel(group.places.some(p=>p.name==='Brighton')?'Brighton & nearby':group.places.some(p=>p.name==='Southend-on-Sea')?'Southend-on-Sea & nearby':`${group.places.length} places · zoom in`),{permanent:!hitPlace&&group.places.some(p=>['Brighton','Southend-on-Sea'].includes(p.name)),direction:'top',offset:[0,-12]}).on('click',()=>map.setView(position,Math.min(12,map.getZoom()+1.5)));
+      const doneCount=group.places.filter(p=>visited.has(p.name)).length;
+      const names=group.places.map(p=>p.name).join(', '),position=targetMap.containerPointToLatLng([group.x,group.y]);
+      L.marker(position,{icon:L.divIcon({className:`map-cluster${doneCount?' has-visited':''}`,html:`<span>${doneCount?'✓'+doneCount+'/'+group.places.length:'+'+group.places.length}</span>`,iconSize:[28,28],iconAnchor:[14,14]}),title:`${group.places.length} destinations: ${names}. Zoom in.`,alt:`Zoom to ${names}`}).addTo(layer).bindTooltip(uiLabel(group.places.some(p=>p.name==='Brighton')?'Brighton & nearby':group.places.some(p=>p.name==='Southend-on-Sea')?'Southend-on-Sea & nearby':`${group.places.length} places · zoom in`),{permanent:!focusedPlace&&group.places.some(p=>['Brighton','Southend-on-Sea'].includes(p.name)),direction:'top',offset:[0,-12]}).on('click',()=>targetMap.setView(position,Math.min(12,targetMap.getZoom()+1.5)));
       continue;
     }
-    const place=group.places[0],index=places.findIndex(p=>p.name===place.name),done=visited.has(place.name),focused=place.name===hitPlace?.name;
-    L.marker([place.lat,place.lng],{icon:L.divIcon({className:`place-marker${done?' done':''}${focused?' selected':''}`,html:`<span>${done?'✓':String(index+1).padStart(2,'0')}</span>`,iconSize:[28,28],iconAnchor:[14,14]}),title:`${place.name}${done?' · visited':''}`,alt:place.name,keyboard:true,zIndexOffset:focused?1000:0})
-      .addTo(placePins).bindTooltip(uiLabel(place.name,place.zh),{direction:'top',offset:[0,-14],permanent:focused||(!hitPlace&&['Brighton','Southend-on-Sea'].includes(place.name))}).on('click',()=>{if(mode==='mouse'){const p=map.latLngToContainerPoint([place.lat,place.lng]),size=map.getSize();land({x:p.x/size.x,y:p.y/size.y});}else showPlace(place);});
+    const place=group.places[0],index=places.findIndex(p=>p.name===place.name),done=visited.has(place.name),focused=place.name===focusedPlace?.name;
+    const marker=L.marker([place.lat,place.lng],{icon:L.divIcon({className:`place-marker${done?' done':''}${focused?' selected':''}`,html:`<span>${done?'✓':String(index+1).padStart(2,'0')}</span>`,iconSize:[28,28],iconAnchor:[14,14]}),title:`${place.name}${done?' · visited':''}`,alt:place.name,keyboard:true,zIndexOffset:focused?1000:0})
+      .addTo(layer).bindTooltip(uiLabel(place.name,place.zh),{direction:'top',offset:[0,-14],permanent:focused||(!focusedPlace&&['Brighton','Southend-on-Sea'].includes(place.name))}).on('click',()=>toggleVisited(place));
+    marker.getElement().setAttribute('aria-label',`${place.name} / ${place.zh} · ${done?'Visited / 已去过':'Mark as visited / 标记已去过'}`);marker.getElement().setAttribute('aria-pressed',String(done));
   }
 }
 map.on('zoomend',renderMapPins);
@@ -97,7 +114,7 @@ function toggleVisited(place){
   const saved=saveVisited(storage,visited);
   uiText($('saved-note'),saved?'Saved in this browser · untick a place to put it back in play.':'Browser storage is unavailable. Your checks will last for this visit only.');
   renderProgress();
-  if(selectedPlace?.name===place.name)showPlace(place);
+  syncVisitedButtons();
   status(visited.size===places.length?'You’ve explored every spot! Untick a place to play again.':`${visited.size} explored · ${places.length-visited.size} places still to discover.`);
 }
 $('visit-result').addEventListener('click',()=>{if(selectedPlace)toggleVisited(selectedPlace);});
@@ -150,12 +167,12 @@ function cameraPoint(x,y){
 }
 function land(point=aim){
   unlockSound();
-  if(performance.now()<cooldown) return;
+  if(performance.now()<cooldown||$('result').open) return;
   const place=nextPlace(places,visited,previousName);
   held=false;clearDart();$('aim').hidden=true;
   if(!place){status('No new target left. Untick another place to keep playing.');uiText($('live-hint'),'No new target left.');cooldown=performance.now()+650;return;}
   previousName=place.name;
-  const ticket=++throwTicket;cooldown=performance.now()+800;$('result').hidden=true;focusHit(null);pins.clearLayers();
+  const ticket=++throwTicket;cooldown=performance.now()+800;closeReveal();focusHit(null);pins.clearLayers();
   const start=$('camera-stage').getBoundingClientRect(), target=$('map').getBoundingClientRect();
   const landing=map.latLngToContainerPoint([place.lat,place.lng]);
   const flying=document.createElement('div');flying.className='flying-dart';flying.innerHTML=dartSvg;
@@ -190,8 +207,8 @@ function processTracking(data){
         const speed=lastHand?Math.hypot(hand.x-lastHand.x,hand.y-lastHand.y)*1000/dt:0;
         motion=Math.max(speed,motion*.75);
         smoothed=smoothed?{x:smoothed.x+(hand.x-smoothed.x)*.38,y:smoothed.y+(hand.y-smoothed.y)*.38}:{x:hand.x,y:hand.y};
-        if(now>cooldown){
-          if(!held&&hand.pinch<.4){held=true;heldAt=now;$('result').hidden=true;motion=0;status('Dart in hand. Move to aim, then flick and release.');}
+        if(now>cooldown&&!$('result').open){
+          if(!held&&hand.pinch<.4){held=true;heldAt=now;closeReveal();motion=0;status('Dart in hand. Move to aim, then flick and release.');}
           if(held){
             setAim(aimFromHand(smoothed.x,smoothed.y));$('aim').hidden=false;
             dart.visible=true;
@@ -249,8 +266,10 @@ $('start').addEventListener('click',startCamera);$('stop').addEventListener('cli
 map.on('mousemove',event=>{if(mode==='mouse'&&performance.now()>cooldown){$('aim').hidden=false;const s=map.getSize();setAim({x:event.containerPoint.x/s.x,y:event.containerPoint.y/s.y});}});
 map.on('click',event=>{if(mode==='mouse'){const s=map.getSize();land({x:event.containerPoint.x/s.x,y:event.containerPoint.y/s.y});}});
 document.addEventListener('keydown',event=>{if(event.code==='Space'&&mode==='mouse'&&!$('instructions').open&&!['BUTTON','A','INPUT'].includes(document.activeElement?.tagName)){event.preventDefault();land();}});
-$('again').addEventListener('click',()=>{$('result').hidden=true;focusHit(null);pins.clearLayers();if(mode==='mouse')$('aim').hidden=false;});
-$('clear').addEventListener('click',()=>{throwTicket++;document.querySelectorAll('.flying-dart').forEach(el=>el.remove());pins.clearLayers();throwCount=0;$('throw-history').replaceChildren();$('throw-history-panel').hidden=true;focusHit(null);$('result').hidden=true;status('A fresh map. Where to next?');});
+$('close-result').addEventListener('click',closeReveal);
+$('result').addEventListener('cancel',event=>{if($('result').classList.contains('rolling'))event.preventDefault();else clearInterval(rollTimer);});
+$('again').addEventListener('click',()=>{closeReveal();focusHit(null);pins.clearLayers();if(mode==='mouse')$('aim').hidden=false;});
+$('clear').addEventListener('click',()=>{throwTicket++;document.querySelectorAll('.flying-dart').forEach(el=>el.remove());pins.clearLayers();throwCount=0;$('throw-history').replaceChildren();$('throw-history-panel').hidden=true;focusHit(null);closeReveal();status('A fresh map. Where to next?');});
 $('reset').addEventListener('click',()=>{resetMap();setAim(aim);});
 $('help').addEventListener('click',()=>$('instructions').showModal());$('close-help').addEventListener('click',()=>$('instructions').close());
 window.addEventListener('pagehide',stopCamera);
@@ -259,7 +278,7 @@ new ResizeObserver(()=>{map.invalidateSize();resetMap();setAim(aim);}).observe($
 window.addEventListener('storage',event=>{
   if(event.storageArea!==storage)return;
   const saved=loadVisited(storage,places);visited.clear();saved.forEach(name=>visited.add(name));renderProgress();
-  if(selectedPlace)showPlace(selectedPlace);
+  syncVisitedButtons();
 });
 
 $('sound').addEventListener('click',()=>{const enabled=toggleSound();uiText($('sound'),enabled?'Sound on ↗':'Sound off ↗');$('sound').setAttribute('aria-pressed',String(enabled));});

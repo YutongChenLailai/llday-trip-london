@@ -33,3 +33,5 @@ English UI and destination names have a smaller Chinese companion line. A throw 
 The destination list uses the reference blue/coral/green dots. On a mouse, a local yellow cursor gently repels the text (at most 6 px); checkboxes stay stationary, keyboard operation remains native, and touch/reduced-motion users do not need the effect.
 
 Updated: yellow camera panel, white result, 48 destinations including villages. Uniform random unvisited selection excludes the last draw; when no different eligible place remains it stops. Reveal uses a 540 ms reel and local confetti, without map shake. Recent picks appear below the result.
+
+Fullscreen native-dialog reveal replaces the standalone result card. Visited map, main map dots, checklist labels and pick-history buttons share visited state; clusters show visited counts and zoom to individual targets.

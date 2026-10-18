@@ -24,3 +24,5 @@ Not verified with a live person: face movement, hair exclusion on real footage, 
 - Live-person hand outline stability still needs user testing.
 
 Updated: yellow camera panel, white result, 48 destinations including villages. Uniform random unvisited selection excludes the last draw; when no different eligible place remains it stops. Reveal uses a 540 ms reel and local confetti, without map shake. Recent picks appear below the result.
+
+Fullscreen native-dialog reveal replaces the standalone result card. Visited map, main map dots, checklist labels and pick-history buttons share visited state; clusters show visited counts and zoom to individual targets.
