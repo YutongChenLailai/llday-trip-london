@@ -25,3 +25,9 @@ Checked destinations persist in localStorage in this browser and are excluded fr
 `npm test` checks gesture gates, map grouping, catalogue bounds, visited exclusion, storage validation, oval geometry and wrist clipping. `npm run build` bundles the classic tracking worker and creates `dist/` for static hosting. `/tests/models.html` checks actual worker/model loading and inference without camera access during development.
 
 Live-person edge quality, hand latency and physical throwing feel still need target-device testing. First model download and initial inference can be slower than later frames.
+
+## Bilingual fast interaction
+
+English UI and destination names have a smaller Chinese companion line. A throw flies in 170 ms, then the small yellow result badge reels through eligible names for 280 ms before settling. The aim-selected destination is unchanged, and visited destinations are still excluded. Reduced motion skips the reel. Hands now receive a dashed blue tracked outline, matching the accepted face oval.
+
+The destination list uses the reference blue/coral/green dots. On a mouse, a local yellow cursor gently repels the text (at most 6 px); checkboxes stay stationary, keyboard operation remains native, and touch/reduced-motion users do not need the effect.

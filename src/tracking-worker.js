@@ -32,6 +32,8 @@ self.onmessage=async({data})=>{
         ctx.drawImage(input,0,0,width,height);ctx.globalCompositeOperation='destination-in';ctx.drawImage(maskCanvas,0,0,width,height);ctx.globalCompositeOperation='source-over';
       });
     }
+    ctx.save();ctx.strokeStyle='#3d55f5';ctx.lineWidth=1.3;ctx.setLineDash([5,6]);
+    for(const points of hands){const outline=handOutline(points);if(outline.length<3)continue;ctx.beginPath();outline.forEach((p,i)=>i?ctx.lineTo(p.x*width,p.y*height):ctx.moveTo(p.x*width,p.y*height));ctx.closePath();ctx.stroke();}ctx.restore();
     if(oval){
       ctx.save();ctx.beginPath();ctx.ellipse(oval.x,oval.y,oval.rx,oval.ry,0,0,Math.PI*2);ctx.clip();ctx.drawImage(input,0,0,width,height);ctx.restore();
       ctx.save();ctx.strokeStyle='#3d55f5';ctx.lineWidth=1.3;ctx.setLineDash([5,6]);ctx.beginPath();ctx.ellipse(oval.x,oval.y,oval.rx+3,oval.ry+3,0,0,Math.PI*2);ctx.stroke();ctx.restore();

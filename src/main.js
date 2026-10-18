@@ -1,3 +1,4 @@
+import {uiText,uiLabel,translateStatic} from './translations.js';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import * as THREE from 'three';
@@ -11,7 +12,7 @@ const $ = id => document.getElementById(id);
 let storage;
 try { storage=window.localStorage; } catch { /* Storage can be disabled by the browser. */ }
 const visited=loadVisited(storage,places);
-let selectedPlace=null, hitPlace=null, throwTicket=0;
+let selectedPlace=null, hitPlace=null, throwTicket=0, rollTimer;
 const map = L.map('map',{zoomControl:false,scrollWheelZoom:false,zoomSnap:.25,minZoom:6,maxZoom:12,maxBounds:[[50.2,-3.7],[53.4,2.5]],maxBoundsViscosity:.9});
 map.createPane('fallback');map.getPane('fallback').style.zIndex='190';
 L.imageOverlay(mapArtwork,mapBounds,{pane:'fallback',interactive:false}).addTo(map);
@@ -22,23 +23,36 @@ resetMap();
 const pins=L.layerGroup().addTo(map), placePins=L.layerGroup().addTo(map);
 function showPlace(place){
   selectedPlace=place;
-  $('destination').textContent=place.name;$('destination-note').textContent=place.note;$('rail-note').textContent=`By rail → ${place.station}`;$('rail-source').href=place.source;
+  uiText($('destination'),place.name);uiText($('destination-note'),place.note,place.noteZh);uiText($('rail-note'),`By rail → ${place.station}`,`乘火车前往 ${place.zh}`);$('rail-source').href=place.source;
   $('explore').href=`https://www.google.com/maps/dir/?api=1&origin=London&destination=${encodeURIComponent(place.station+", England")}&travelmode=transit`;
-  $('visit-result').textContent=visited.has(place.name)?'✓ Visited · undo':'✓ Mark as visited';
+  uiText($('visit-result'),visited.has(place.name)?'✓ Visited · undo':'✓ Mark as visited');
   $('visit-result').classList.toggle('is-visited',visited.has(place.name));
   $('result').hidden=false;
 }
+function rollDestination(place,ticket){
+  clearInterval(rollTimer);showPlace(place);
+  const badge=document.querySelector('.map-badge');badge.classList.add('roll-badge');uiText(badge,place.name,place.zh);
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  const candidates=places.filter(p=>!visited.has(p.name));let step=0;
+  $('result').classList.add('rolling');$('result').setAttribute('aria-busy','true');
+  rollTimer=setInterval(()=>{
+    if(ticket!==throwTicket){clearInterval(rollTimer);$('result').classList.remove('rolling');$('result').setAttribute('aria-busy','false');return;}
+    if(++step>=7){clearInterval(rollTimer);showPlace(place);uiText(badge,place.name,place.zh);$('result').classList.remove('rolling');$('result').setAttribute('aria-busy','false');$('result').classList.remove('settled');void $('result').offsetWidth;$('result').classList.add('settled');return;}
+    const candidate=candidates[(places.indexOf(places.find(p=>p.name===place.name))+step*3)%candidates.length];uiText($('destination'),candidate.name,candidate.zh);uiText(badge,candidate.name,candidate.zh);
+  },40);
+}
 function renderProgress(){
-  $('visited-count').textContent=`${visited.size} / ${places.length}`;
+  uiText($('visited-count'),`${visited.size} / ${places.length}`);
   const list=$('place-list');list.replaceChildren();
   places.forEach((place,index)=>{
     const done=visited.has(place.name);
     const label=document.createElement('label');label.className=`place-item${done?' is-visited':''}`;
     const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=done;checkbox.setAttribute('aria-label',`Visited ${place.name}`);
     checkbox.addEventListener('change',()=>toggleVisited(place));
-    const name=document.createElement('span');name.textContent=place.name;name.title=place.kind;
+    const name=document.createElement('span');name.className='place-copy';uiText(name,place.name,place.zh);name.title=place.kind;
+    const dot=document.createElement('i');dot.className=`option-dot dot-${['blue','coral','green'][index%3]}`;dot.setAttribute('aria-hidden','true');
     const number=document.createElement('small');number.textContent=String(index+1).padStart(2,'0');
-    label.append(checkbox,name,number);list.append(label);
+    label.append(checkbox,dot,name,number);list.append(label);
 
   });
   renderMapPins();
@@ -50,20 +64,20 @@ function renderMapPins(){
   for(const group of groups){
     if(group.places.length>1){
       const names=group.places.map(p=>p.name).join(', '),position=map.containerPointToLatLng([group.x,group.y]);
-      L.marker(position,{icon:L.divIcon({className:'map-cluster',html:`<span>+${group.places.length}</span>`,iconSize:[28,28],iconAnchor:[14,14]}),title:`${group.places.length} destinations: ${names}. Zoom in.`,alt:`Zoom to ${names}`}).addTo(placePins).bindTooltip(group.places.some(p=>p.name==='Brighton')?'Brighton & nearby':group.places.some(p=>p.name==='Southend-on-Sea')?'Southend-on-Sea & nearby':`${group.places.length} places · zoom in`,{permanent:!hitPlace&&group.places.some(p=>['Brighton','Southend-on-Sea'].includes(p.name)),direction:'top',offset:[0,-12]}).on('click',()=>map.setView(position,Math.min(12,map.getZoom()+1.5)));
+      L.marker(position,{icon:L.divIcon({className:'map-cluster',html:`<span>+${group.places.length}</span>`,iconSize:[28,28],iconAnchor:[14,14]}),title:`${group.places.length} destinations: ${names}. Zoom in.`,alt:`Zoom to ${names}`}).addTo(placePins).bindTooltip(uiLabel(group.places.some(p=>p.name==='Brighton')?'Brighton & nearby':group.places.some(p=>p.name==='Southend-on-Sea')?'Southend-on-Sea & nearby':`${group.places.length} places · zoom in`),{permanent:!hitPlace&&group.places.some(p=>['Brighton','Southend-on-Sea'].includes(p.name)),direction:'top',offset:[0,-12]}).on('click',()=>map.setView(position,Math.min(12,map.getZoom()+1.5)));
       continue;
     }
     const place=group.places[0],index=places.findIndex(p=>p.name===place.name),done=visited.has(place.name),focused=place.name===hitPlace?.name;
     L.marker([place.lat,place.lng],{icon:L.divIcon({className:`place-marker${done?' done':''}${focused?' selected':''}`,html:`<span>${done?'✓':String(index+1).padStart(2,'0')}</span>`,iconSize:[28,28],iconAnchor:[14,14]}),title:`${place.name}${done?' · visited':''}`,alt:place.name,keyboard:true,zIndexOffset:focused?1000:0})
-      .addTo(placePins).bindTooltip(place.name,{direction:'top',offset:[0,-14],permanent:focused||(!hitPlace&&['Brighton','Southend-on-Sea'].includes(place.name))}).on('click',()=>{if(mode==='mouse'){const p=map.latLngToContainerPoint([place.lat,place.lng]),size=map.getSize();land({x:p.x/size.x,y:p.y/size.y});}else showPlace(place);});
+      .addTo(placePins).bindTooltip(uiLabel(place.name,place.zh),{direction:'top',offset:[0,-14],permanent:focused||(!hitPlace&&['Brighton','Southend-on-Sea'].includes(place.name))}).on('click',()=>{if(mode==='mouse'){const p=map.latLngToContainerPoint([place.lat,place.lng]),size=map.getSize();land({x:p.x/size.x,y:p.y/size.y});}else showPlace(place);});
   }
 }
 map.on('zoomend',renderMapPins);
-function focusHit(place){hitPlace=place;$('map').classList.toggle('has-hit',Boolean(place));renderMapPins();}
+function focusHit(place){if(!place){const badge=document.querySelector('.map-badge');uiText(badge,'OUT BY TRAIN. HOME TONIGHT.');badge.classList.remove('roll-badge');}hitPlace=place;$('map').classList.toggle('has-hit',Boolean(place));renderMapPins();}
 function toggleVisited(place){
   if(visited.has(place.name))visited.delete(place.name);else visited.add(place.name);
   const saved=saveVisited(storage,visited);
-  $('saved-note').textContent=saved?'Saved in this browser · untick a place to put it back in play.':'Browser storage is unavailable. Your checks will last for this visit only.';
+  uiText($('saved-note'),saved?'Saved in this browser · untick a place to put it back in play.':'Browser storage is unavailable. Your checks will last for this visit only.');
   renderProgress();
   if(selectedPlace?.name===place.name)showPlace(place);
   status(visited.size===places.length?'You’ve explored every spot! Untick a place to play again.':`${visited.size} explored · ${places.length-visited.size} places still to discover.`);
@@ -76,7 +90,7 @@ let aim={x:.5,y:.5},smoothed=null,held=false,heldAt=0,lastHand=null,motion=0,coo
 let renderer,scene,camera,dart,loading=false,generation=0,renderWidth=0,renderHeight=0;
 const person=$('person'),ctx=person.getContext('2d');
 const video = $('video');
-function status(text){ $('status').textContent = text; }
+function status(text){ uiText($('status'),text); }
 function setAim(point){
   aim = point;
   const panel = $('map').getBoundingClientRect(), outer = $('map').parentElement.getBoundingClientRect();
@@ -122,8 +136,8 @@ function land(point=aim){
   const size=map.getSize(), aimed=map.containerPointToLatLng([size.x*point.x,size.y*point.y]);
   const place=nextPlace(aimed.lat,aimed.lng,places,visited);
   held=false;clearDart();$('aim').hidden=true;
-  if(!place){status('You’ve explored every spot! Untick a place to play again.');$('live-hint').textContent='All places explored ✓';cooldown=performance.now()+1100;return;}
-  const ticket=++throwTicket;cooldown=performance.now()+1100;$('result').hidden=true;focusHit(null);pins.clearLayers();
+  if(!place){status('You’ve explored every spot! Untick a place to play again.');uiText($('live-hint'),'All places explored ✓');cooldown=performance.now()+650;return;}
+  const ticket=++throwTicket;cooldown=performance.now()+650;$('result').hidden=true;focusHit(null);pins.clearLayers();
   const start=$('camera-stage').getBoundingClientRect(), target=$('map').getBoundingClientRect();
   const landing=map.latLngToContainerPoint([place.lat,place.lng]);
   const flying=document.createElement('div');flying.className='flying-dart';flying.innerHTML=dartSvg;
@@ -135,16 +149,16 @@ function land(point=aim){
     if(visited.has(place.name)){status('That place was just marked visited. Throw again for a new spot.');return;}
     pins.clearLayers();
     L.marker([place.lat,place.lng],{icon:L.divIcon({className:'pin-icon',html:dartSvg,iconSize:[32,53],iconAnchor:[16,49]})}).addTo(pins);
-    playImpact();$('map').classList.remove('impact');void $('map').offsetWidth;$('map').classList.add('impact');throwCount++;focusHit(place);showPlace(place);
+    playImpact();$('map').classList.remove('impact');void $('map').offsetWidth;$('map').classList.add('impact');throwCount++;focusHit(place);rollDestination(place,ticket);
     status(`Throw ${String(throwCount).padStart(2,'0')} · ${place.name} · a new place to go.`);
-    if(mode==='camera')$('live-hint').textContent='Pinch to pick up another dart';
-  },650);
+    if(mode==='camera')uiText($('live-hint'),'Pinch to pick up another dart');
+  },170);
 }
 function stopCamera(){
   generation++;loading=false;cancelAnimationFrame(frameId);tracker?.terminate();tracker=null;trackingBusy=false;lastTrackingTime=0;stream?.getTracks().forEach(track=>track.stop());stream=null;video.srcObject=null;
   mode='idle';held=false;lastHand=null;smoothed=null;lastVideoTime=-1;clearDart();ctx.clearRect(0,0,person.width,person.height);
   $('placeholder').hidden=false;$('onboarding').hidden=false;$('live-hint').hidden=true;$('stop').hidden=true;$('aim').hidden=true;
-  $('camera-stage').classList.remove('demo-active');$('onboarding').querySelector('h2').textContent='You’re the controller.';$('onboarding').querySelector('p').textContent='Step in. Pick up a dart. Find your day away.';$('demo').textContent='Try with your mouse first →';$('camera-label').innerHTML='<i></i> CAMERA OFF';$('start').disabled=false;status('Camera off. Ready when you are.');
+  $('camera-stage').classList.remove('demo-active');uiText($('onboarding').querySelector('h2'),'You’re the controller.');uiText($('onboarding').querySelector('p'),'Step in. Pick up a dart. Find your day away.');uiText($('demo'),'Try with your mouse first →');uiText($('camera-label'),'CAMERA OFF');$('start').disabled=false;status('Camera off. Ready when you are.');
 }
 function processTracking(data){
   trackingBusy=false;
@@ -165,14 +179,14 @@ function processTracking(data){
             setAim(aimFromHand(smoothed.x,smoothed.y));$('aim').hidden=false;
             dart.visible=true;
             handAngle=Math.atan2(-(points[8].y-points[5].y),-(points[8].x-points[5].x))-Math.PI/2;
-            $('live-hint').textContent='Dart ready · flick & release';
+            uiText($('live-hint'),'Dart ready · flick & release');
             if(releaseReady(held,hand.pinch,now-heldAt,motion)) land();
-            else if(hand.pinch>.9){held=false;clearDart();$('aim').hidden=true;$('live-hint').textContent='Pinch, then flick as you release';}
-          }else{$('live-hint').textContent='Pinch thumb + index to pick up';clearDart();}
+            else if(hand.pinch>.9){held=false;clearDart();$('aim').hidden=true;uiText($('live-hint'),'Pinch, then flick as you release');}
+          }else{uiText($('live-hint'),'Pinch thumb + index to pick up');clearDart();}
         }
-        lastHand={...hand,time:now};$('camera-label').innerHTML='<i style="background:#00a878"></i> HAND FOUND';
+        lastHand={...hand,time:now};uiText($('camera-label'),'HAND FOUND');
       }else{
-        held=false;smoothed=null;lastHand=null;motion=0;clearDart();$('aim').hidden=true;$('camera-label').innerHTML='<i style="background:#ff5a42"></i> FINDING HAND';$('live-hint').textContent='Bring your hand into frame';
+        held=false;smoothed=null;lastHand=null;motion=0;clearDart();$('aim').hidden=true;uiText($('camera-label'),'FINDING HAND');uiText($('live-hint'),'Bring your hand into frame');
       }
 }
 function track(now){
@@ -209,9 +223,9 @@ async function startCamera(){
   }finally{if(ticket===generation){loading=false;$('start').disabled=false;}}
 }
 function demo(){
-  unlockSound();stopCamera();mode='mouse';$('camera-stage').classList.add('demo-active');$('camera-label').textContent='MOUSE MODE';
-  $('onboarding').querySelector('h2').textContent='Your next day away.';$('onboarding').querySelector('p').textContent='Move across the map. Click to throw.';
-  $('demo').textContent='Mouse mode is on · click the map';$('aim').hidden=false;setAim({x:.5,y:.5});
+  unlockSound();stopCamera();mode='mouse';$('camera-stage').classList.add('demo-active');uiText($('camera-label'),'MOUSE MODE');
+  uiText($('onboarding').querySelector('h2'),'Your next day away.');uiText($('onboarding').querySelector('p'),'Move across the map. Click to throw.');
+  uiText($('demo'),'Mouse mode is on · click the map');$('aim').hidden=false;setAim({x:.5,y:.5});
   status('Mouse mode · click the map or press Space to throw.');
 }
 $('start').addEventListener('click',startCamera);$('stop').addEventListener('click',stopCamera);$('demo').addEventListener('click',demo);
@@ -231,4 +245,19 @@ window.addEventListener('storage',event=>{
   if(selectedPlace)showPlace(selectedPlace);
 });
 
-$('sound').addEventListener('click',()=>{const enabled=toggleSound();$('sound').textContent=enabled?'Sound on ↗':'Sound off ↗';$('sound').setAttribute('aria-pressed',String(enabled));});
+$('sound').addEventListener('click',()=>{const enabled=toggleSound();uiText($('sound'),enabled?'Sound on ↗':'Sound off ↗');$('sound').setAttribute('aria-pressed',String(enabled));});
+
+translateStatic();uiText($('start'),'Enable camera ↗');
+const optionCursor=document.createElement('div');optionCursor.className='option-cursor';optionCursor.setAttribute('aria-hidden','true');document.body.append(optionCursor);
+const optionList=$('place-list');let pointerFrame;
+optionList.addEventListener('pointermove',event=>{
+  if(event.pointerType!=='mouse')return;
+  cancelAnimationFrame(pointerFrame);pointerFrame=requestAnimationFrame(()=>{
+    optionCursor.classList.add('visible');optionCursor.style.transform=`translate(${event.clientX-6}px,${event.clientY-6}px)`;
+    const label=event.target.closest('.place-item');if(!label)return;
+    const box=label.getBoundingClientRect(),copy=label.querySelector('.place-copy');
+    copy.style.transform=`translate(${clamp((box.left+box.width/2-event.clientX)*.09,-6,6)}px,${clamp((box.top+box.height/2-event.clientY)*.15,-3,3)}px)`;
+  });
+});
+optionList.addEventListener('pointerout',event=>{const label=event.target.closest('.place-item');if(label&&!label.contains(event.relatedTarget))label.querySelector('.place-copy').style.transform='';});
+optionList.addEventListener('pointerleave',()=>{cancelAnimationFrame(pointerFrame);optionCursor.classList.remove('visible');optionList.querySelectorAll('.place-copy').forEach(el=>el.style.transform='');});

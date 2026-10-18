@@ -1,3 +1,4 @@
+import {destinationChinese} from './translations.js';
 // Day-trip ideas, not live timetables; check the outward and last return train before travelling.
 const sources={c2c:'https://www.c2c-online.co.uk/tickets-and-fares/',kent:'https://www.southeasternrailway.co.uk/destinations-and-offers/popular-kent-destinations',west:'https://www.gwr.com/stations-and-destinations/destinations',east:'https://www.greateranglia.co.uk/destinations',south:'https://www.southwesternrailway.com/destinations-and-offers/destinations',sussex:'https://www.southernrailway.com/travel-inspiration/destinations',thames:'https://www.thameslinkrailway.com/travel-inspiration/a-z-of-destinations'};
 const trips=[
@@ -42,4 +43,4 @@ const trips=[
  ['Newbury',51.401,-1.324,'Town','Newbury','west','Canal-side paths, a market town, and a slower pace.'],
  ['Faversham',51.315,.892,'Town','Faversham','kent','A historic market town with a creek-side walk.']
 ];
-export const places=trips.map(([name,lat,lng,kind,station,network,note])=>({name,lat,lng,kind,station,note,source:sources[network]}));
+export const places=trips.map(([name,lat,lng,kind,station,network,note])=>({name,lat,lng,kind,station,note,source:sources[network],zh:destinationChinese[name][0],noteZh:destinationChinese[name][1]}));
