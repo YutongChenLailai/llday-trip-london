@@ -13,3 +13,5 @@ Regional coastline: Natural Earth 1:50m Admin 0 countries, public domain. United
 
 - Google MediaPipe BlazeFace short-range face detector: Apache License 2.0, bundled from the official MediaPipe model distribution.
 - Kunai geometry and Web Audio impact synthesis: original project code; no external sound samples.
+
+- Live street-map data © OpenStreetMap contributors, ODbL. https://www.openstreetmap.org/copyright

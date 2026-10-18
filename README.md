@@ -16,7 +16,7 @@ The face is cropped to a smooth oval inside the detected face box, with a dashed
 
 ## Map and visits
 
-The regional map uses bundled coastline geometry and geographic destination coordinates. It is an illustration, not a rail routing or navigation map; dotted lines indicate direction. Nearby destinations are grouped and expand on zoom. Route and rail information links are supplied for each destination. These are curated day-trip ideas, not a complete inventory or live train availability; check your travel date and last return train.
+The regional map uses standard OpenStreetMap street tiles with geographic destination coordinates. A bundled coastline illustration stays underneath as a fallback. Live tiles need a network connection. A successful throw subtly fades the basemap and other pins while highlighting the chosen destination in yellow; throwing again or clearing restores the full map. Nearby destinations are grouped and expand on zoom. Route and rail information links are supplied for each destination. These are curated day-trip ideas, not a complete inventory or live train availability; check your travel date and last return train.
 
 Checked destinations persist in localStorage in this browser and are excluded from subsequent throws. Unchecking restores eligibility. Every visitor has their own list; local preview history does not migrate automatically to the public URL. All-visited selection stops cleanly.
 

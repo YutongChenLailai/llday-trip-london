@@ -11,9 +11,11 @@ const $ = id => document.getElementById(id);
 let storage;
 try { storage=window.localStorage; } catch { /* Storage can be disabled by the browser. */ }
 const visited=loadVisited(storage,places);
-let selectedPlace=null, throwTicket=0;
+let selectedPlace=null, hitPlace=null, throwTicket=0;
 const map = L.map('map',{zoomControl:false,scrollWheelZoom:false,zoomSnap:.25,minZoom:6,maxZoom:12,maxBounds:[[50.2,-3.7],[53.4,2.5]],maxBoundsViscosity:.9});
-L.imageOverlay(mapArtwork,mapBounds,{attribution:'Day trips from London · illustrated regional map'}).addTo(map);
+map.createPane('fallback');map.getPane('fallback').style.zIndex='190';
+L.imageOverlay(mapArtwork,mapBounds,{pane:'fallback',interactive:false}).addTo(map);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',referrerPolicy:'strict-origin-when-cross-origin'}).addTo(map).on('tileerror',()=>{status('Street map connection interrupted; destination pins remain available.');});
 L.control.zoom({position:'bottomright'}).addTo(map);
 function resetMap(){map.fitBounds(mapBounds,{padding:[12,12]});}
 resetMap();
@@ -43,19 +45,21 @@ function renderProgress(){
 }
 function renderMapPins(){
   placePins.clearLayers();
-  const groups=groupPlaces(places,place=>map.latLngToContainerPoint([place.lat,place.lng]));
+  const groups=groupPlaces(places.filter(place=>place.name!==hitPlace?.name),place=>map.latLngToContainerPoint([place.lat,place.lng]));
+  if(hitPlace)groups.push({places:[hitPlace]});
   for(const group of groups){
     if(group.places.length>1){
       const names=group.places.map(p=>p.name).join(', '),position=map.containerPointToLatLng([group.x,group.y]);
-      L.marker(position,{icon:L.divIcon({className:'map-cluster',html:`<span>+${group.places.length}</span>`,iconSize:[28,28],iconAnchor:[14,14]}),title:`${group.places.length} destinations: ${names}. Zoom in.`,alt:`Zoom to ${names}`}).addTo(placePins).bindTooltip(group.places.some(p=>p.name==='Brighton')?'Brighton & nearby':group.places.some(p=>p.name==='Southend-on-Sea')?'Southend-on-Sea & nearby':`${group.places.length} places · zoom in`,{permanent:group.places.some(p=>['Brighton','Southend-on-Sea'].includes(p.name)),direction:'top',offset:[0,-12]}).on('click',()=>map.setView(position,Math.min(12,map.getZoom()+1.5)));
+      L.marker(position,{icon:L.divIcon({className:'map-cluster',html:`<span>+${group.places.length}</span>`,iconSize:[28,28],iconAnchor:[14,14]}),title:`${group.places.length} destinations: ${names}. Zoom in.`,alt:`Zoom to ${names}`}).addTo(placePins).bindTooltip(group.places.some(p=>p.name==='Brighton')?'Brighton & nearby':group.places.some(p=>p.name==='Southend-on-Sea')?'Southend-on-Sea & nearby':`${group.places.length} places · zoom in`,{permanent:!hitPlace&&group.places.some(p=>['Brighton','Southend-on-Sea'].includes(p.name)),direction:'top',offset:[0,-12]}).on('click',()=>map.setView(position,Math.min(12,map.getZoom()+1.5)));
       continue;
     }
-    const place=group.places[0],index=places.indexOf(place),done=visited.has(place.name);
-    L.marker([place.lat,place.lng],{icon:L.divIcon({className:`place-marker${done?' done':''}`,html:`<span>${done?'✓':String(index+1).padStart(2,'0')}</span>`,iconSize:[28,28],iconAnchor:[14,14]}),title:`${place.name}${done?' · visited':''}`,alt:place.name,keyboard:true})
-      .addTo(placePins).bindTooltip(place.name,{direction:'top',offset:[0,-14],permanent:['Brighton','Southend-on-Sea'].includes(place.name)}).on('click',()=>{if(mode==='mouse'){const p=map.latLngToContainerPoint([place.lat,place.lng]),size=map.getSize();land({x:p.x/size.x,y:p.y/size.y});}else showPlace(place);});
+    const place=group.places[0],index=places.findIndex(p=>p.name===place.name),done=visited.has(place.name),focused=place.name===hitPlace?.name;
+    L.marker([place.lat,place.lng],{icon:L.divIcon({className:`place-marker${done?' done':''}${focused?' selected':''}`,html:`<span>${done?'✓':String(index+1).padStart(2,'0')}</span>`,iconSize:[28,28],iconAnchor:[14,14]}),title:`${place.name}${done?' · visited':''}`,alt:place.name,keyboard:true,zIndexOffset:focused?1000:0})
+      .addTo(placePins).bindTooltip(place.name,{direction:'top',offset:[0,-14],permanent:focused||(!hitPlace&&['Brighton','Southend-on-Sea'].includes(place.name))}).on('click',()=>{if(mode==='mouse'){const p=map.latLngToContainerPoint([place.lat,place.lng]),size=map.getSize();land({x:p.x/size.x,y:p.y/size.y});}else showPlace(place);});
   }
 }
 map.on('zoomend',renderMapPins);
+function focusHit(place){hitPlace=place;$('map').classList.toggle('has-hit',Boolean(place));renderMapPins();}
 function toggleVisited(place){
   if(visited.has(place.name))visited.delete(place.name);else visited.add(place.name);
   const saved=saveVisited(storage,visited);
@@ -119,7 +123,7 @@ function land(point=aim){
   const place=nextPlace(aimed.lat,aimed.lng,places,visited);
   held=false;clearDart();$('aim').hidden=true;
   if(!place){status('You’ve explored every spot! Untick a place to play again.');$('live-hint').textContent='All places explored ✓';cooldown=performance.now()+1100;return;}
-  const ticket=++throwTicket;cooldown=performance.now()+1100;$('result').hidden=true;
+  const ticket=++throwTicket;cooldown=performance.now()+1100;$('result').hidden=true;focusHit(null);pins.clearLayers();
   const start=$('camera-stage').getBoundingClientRect(), target=$('map').getBoundingClientRect();
   const landing=map.latLngToContainerPoint([place.lat,place.lng]);
   const flying=document.createElement('div');flying.className='flying-dart';flying.innerHTML=dartSvg;
@@ -131,7 +135,7 @@ function land(point=aim){
     if(visited.has(place.name)){status('That place was just marked visited. Throw again for a new spot.');return;}
     pins.clearLayers();
     L.marker([place.lat,place.lng],{icon:L.divIcon({className:'pin-icon',html:dartSvg,iconSize:[32,53],iconAnchor:[16,49]})}).addTo(pins);
-    playImpact();$('map').classList.remove('impact');void $('map').offsetWidth;$('map').classList.add('impact');throwCount++;showPlace(place);
+    playImpact();$('map').classList.remove('impact');void $('map').offsetWidth;$('map').classList.add('impact');throwCount++;focusHit(place);showPlace(place);
     status(`Throw ${String(throwCount).padStart(2,'0')} · ${place.name} · a new place to go.`);
     if(mode==='camera')$('live-hint').textContent='Pinch to pick up another dart';
   },650);
@@ -214,8 +218,8 @@ $('start').addEventListener('click',startCamera);$('stop').addEventListener('cli
 map.on('mousemove',event=>{if(mode==='mouse'&&performance.now()>cooldown){$('aim').hidden=false;const s=map.getSize();setAim({x:event.containerPoint.x/s.x,y:event.containerPoint.y/s.y});}});
 map.on('click',event=>{if(mode==='mouse'){const s=map.getSize();land({x:event.containerPoint.x/s.x,y:event.containerPoint.y/s.y});}});
 document.addEventListener('keydown',event=>{if(event.code==='Space'&&mode==='mouse'&&!$('instructions').open&&!['BUTTON','A','INPUT'].includes(document.activeElement?.tagName)){event.preventDefault();land();}});
-$('again').addEventListener('click',()=>{$('result').hidden=true;if(mode==='mouse')$('aim').hidden=false;});
-$('clear').addEventListener('click',()=>{throwTicket++;document.querySelectorAll('.flying-dart').forEach(el=>el.remove());pins.clearLayers();throwCount=0;$('result').hidden=true;status('A fresh map. Where to next?');});
+$('again').addEventListener('click',()=>{$('result').hidden=true;focusHit(null);pins.clearLayers();if(mode==='mouse')$('aim').hidden=false;});
+$('clear').addEventListener('click',()=>{throwTicket++;document.querySelectorAll('.flying-dart').forEach(el=>el.remove());pins.clearLayers();throwCount=0;focusHit(null);$('result').hidden=true;status('A fresh map. Where to next?');});
 $('reset').addEventListener('click',()=>{resetMap();setAim(aim);});
 $('help').addEventListener('click',()=>$('instructions').showModal());$('close-help').addEventListener('click',()=>$('instructions').close());
 window.addEventListener('pagehide',stopCamera);
