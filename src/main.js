@@ -92,7 +92,7 @@ function initDart(){
   const yellow=new THREE.MeshStandardMaterial({color:0xffff18,roughness:.7});
   const vertices=[[0,-1.25,0],[-.34,-.55,0],[0,.08,0],[.34,-.55,0],[0,-.55,.13],[0,-.55,-.13]];
   const faces=[[0,1,4],[1,2,4],[2,3,4],[3,0,4],[1,0,5],[2,1,5],[3,2,5],[0,3,5]];
-  const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(faces.flatMap(f=>f.flatMap(i=>vertices[i])),3));geometry.computeVertexNormals();
+  const geometry=new THREE.BufferGeometry();geometry.setAttribute('position',new THREE.Float32BufferAttribute(faces.flatMap(f=>f.toReversed().flatMap(i=>vertices[i])),3));geometry.computeVertexNormals();
   dart.add(new THREE.Mesh(geometry,silver));
   const handle=new THREE.Mesh(new THREE.CylinderGeometry(.065,.065,.8,16),dark);handle.position.y=.48;dart.add(handle);
   for(let i=0;i<6;i++){const wrap=new THREE.Mesh(new THREE.TorusGeometry(.067,.012,6,16),yellow);wrap.rotation.x=Math.PI/2;wrap.position.y=.18+i*.11;dart.add(wrap);}
