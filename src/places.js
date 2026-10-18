@@ -41,6 +41,14 @@ const trips=[
  ['Tunbridge Wells',51.133,.263,'Town','Tunbridge Wells','kent','The Pantiles, little shops, and a relaxed afternoon.'],
  ['Brockenhurst',50.819,-1.574,'Countryside','Brockenhurst','south','A full day for a New Forest village and woodland paths.'],
  ['Newbury',51.401,-1.324,'Town','Newbury','west','Canal-side paths, a market town, and a slower pace.'],
- ['Faversham',51.315,.892,'Town','Faversham','kent','A historic market town with a creek-side walk.']
+ ['Faversham',51.315,.892,'Town','Faversham','kent','A historic market town with a creek-side walk.'],
+ ['Chilham', 51.244, 0.962, 'Village', 'Chilham', 'kent', 'A village square and quiet lanes; allow time to walk from the station.'],
+ ['Aylesford', 51.303, 0.48, 'Village', 'Aylesford', 'kent', 'A riverside village wander; trains may need a change.'],
+ ['Amberley', 50.909, -0.539, 'Village', 'Amberley', 'sussex', 'A Sussex village and country lanes; allow a walk from the station.'],
+ ['Southease', 50.831, 0.017, 'Village', 'Southease', 'sussex', 'A little village and downland paths; change trains at Lewes.'],
+ ['Wye', 51.185, 0.936, 'Village', 'Wye', 'kent', 'A village afternoon and countryside paths; check connections.'],
+ ['Otford', 51.313, 0.188, 'Village', 'Otford', 'kent', 'A village pond and a gentle wander through Kent lanes.'],
+ ['Wivenhoe', 51.856, 0.963, 'Town', 'Wivenhoe', 'east', 'A small riverside town and quiet waterside streets.'],
+ ['Manningtree', 51.945, 1.062, 'Town', 'Manningtree', 'east', 'Small-town streets and the Stour estuary; allow the station walk.']
 ];
 export const places=trips.map(([name,lat,lng,kind,station,network,note])=>({name,lat,lng,kind,station,note,source:sources[network],zh:destinationChinese[name][0],noteZh:destinationChinese[name][1]}));

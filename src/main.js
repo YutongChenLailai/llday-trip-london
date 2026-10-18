@@ -12,7 +12,7 @@ const $ = id => document.getElementById(id);
 let storage;
 try { storage=window.localStorage; } catch { /* Storage can be disabled by the browser. */ }
 const visited=loadVisited(storage,places);
-let selectedPlace=null, hitPlace=null, throwTicket=0, rollTimer;
+let selectedPlace=null, hitPlace=null, throwTicket=0, rollTimer, previousName=null;
 const map = L.map('map',{zoomControl:false,scrollWheelZoom:false,zoomSnap:.25,minZoom:6,maxZoom:12,maxBounds:[[50.2,-3.7],[53.4,2.5]],maxBoundsViscosity:.9});
 map.createPane('fallback');map.getPane('fallback').style.zIndex='190';
 L.imageOverlay(mapArtwork,mapBounds,{pane:'fallback',interactive:false}).addTo(map);
@@ -29,17 +29,35 @@ function showPlace(place){
   $('visit-result').classList.toggle('is-visited',visited.has(place.name));
   $('result').hidden=false;
 }
-function rollDestination(place,ticket){
-  clearInterval(rollTimer);showPlace(place);
-  const badge=document.querySelector('.map-badge');badge.classList.add('roll-badge');uiText(badge,place.name,place.zh);
+function celebrate(place){
+  focusHit(place);
+  const burst=$('celebration');burst.replaceChildren();
   if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
+  for(let i=0;i<24;i++){
+    const piece=document.createElement('i'),angle=i*Math.PI/12;
+    piece.style.setProperty('--x',`${Math.cos(angle)*(80+i%4*22)}px`);
+    piece.style.setProperty('--y',`${Math.sin(angle)*70+40}px`);
+    piece.style.setProperty('--spin',`${i*47}deg`);
+    piece.style.background=['#ffff18','#3d55f5','#ff5a42','#00a878'][i%4];burst.append(piece);
+  }
+  $('result').classList.remove('settled');void $('result').offsetWidth;$('result').classList.add('settled');
+}
+function rollDestination(place,ticket){
+  clearInterval(rollTimer);showPlace(place);$('celebration').replaceChildren();
+  const result=$('result'),badge=document.querySelector('.map-badge');badge.classList.add('roll-badge');
+  result.classList.remove('settled');result.classList.add('rolling');result.setAttribute('aria-busy','true');
+  const finish=()=>{
+    showPlace(place);uiText(badge,place.name,place.zh);result.classList.remove('rolling');result.setAttribute('aria-busy','false');celebrate(place);
+    status(`Throw ${String(throwCount).padStart(2,'0')} · ${place.name} · a new place to go.`);
+    const item=document.createElement('li');uiText(item,place.name,place.zh);$('throw-history').prepend(item);$('throw-history-panel').hidden=false;
+  };
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){finish();return;}
   const candidates=places.filter(p=>!visited.has(p.name));let step=0;
-  $('result').classList.add('rolling');$('result').setAttribute('aria-busy','true');
+  const spin=()=>{const candidate=candidates[Math.floor(Math.random()*candidates.length)];uiText($('destination'),candidate.name,candidate.zh);uiText(badge,candidate.name,candidate.zh);};spin();
   rollTimer=setInterval(()=>{
-    if(ticket!==throwTicket){clearInterval(rollTimer);$('result').classList.remove('rolling');$('result').setAttribute('aria-busy','false');return;}
-    if(++step>=7){clearInterval(rollTimer);showPlace(place);uiText(badge,place.name,place.zh);$('result').classList.remove('rolling');$('result').setAttribute('aria-busy','false');$('result').classList.remove('settled');void $('result').offsetWidth;$('result').classList.add('settled');return;}
-    const candidate=candidates[(places.indexOf(places.find(p=>p.name===place.name))+step*3)%candidates.length];uiText($('destination'),candidate.name,candidate.zh);uiText(badge,candidate.name,candidate.zh);
-  },40);
+    if(ticket!==throwTicket){clearInterval(rollTimer);result.classList.remove('rolling');result.setAttribute('aria-busy','false');return;}
+    if(++step>=9){clearInterval(rollTimer);finish();return;}spin();
+  },60);
 }
 function renderProgress(){
   uiText($('visited-count'),`${visited.size} / ${places.length}`);
@@ -133,11 +151,11 @@ function cameraPoint(x,y){
 function land(point=aim){
   unlockSound();
   if(performance.now()<cooldown) return;
-  const size=map.getSize(), aimed=map.containerPointToLatLng([size.x*point.x,size.y*point.y]);
-  const place=nextPlace(aimed.lat,aimed.lng,places,visited);
+  const place=nextPlace(places,visited,previousName);
   held=false;clearDart();$('aim').hidden=true;
-  if(!place){status('You’ve explored every spot! Untick a place to play again.');uiText($('live-hint'),'All places explored ✓');cooldown=performance.now()+650;return;}
-  const ticket=++throwTicket;cooldown=performance.now()+650;$('result').hidden=true;focusHit(null);pins.clearLayers();
+  if(!place){status('No new target left. Untick another place to keep playing.');uiText($('live-hint'),'No new target left.');cooldown=performance.now()+650;return;}
+  previousName=place.name;
+  const ticket=++throwTicket;cooldown=performance.now()+800;$('result').hidden=true;focusHit(null);pins.clearLayers();
   const start=$('camera-stage').getBoundingClientRect(), target=$('map').getBoundingClientRect();
   const landing=map.latLngToContainerPoint([place.lat,place.lng]);
   const flying=document.createElement('div');flying.className='flying-dart';flying.innerHTML=dartSvg;
@@ -149,8 +167,7 @@ function land(point=aim){
     if(visited.has(place.name)){status('That place was just marked visited. Throw again for a new spot.');return;}
     pins.clearLayers();
     L.marker([place.lat,place.lng],{icon:L.divIcon({className:'pin-icon',html:dartSvg,iconSize:[32,53],iconAnchor:[16,49]})}).addTo(pins);
-    playImpact();$('map').classList.remove('impact');void $('map').offsetWidth;$('map').classList.add('impact');throwCount++;focusHit(place);rollDestination(place,ticket);
-    status(`Throw ${String(throwCount).padStart(2,'0')} · ${place.name} · a new place to go.`);
+    playImpact();throwCount++;rollDestination(place,ticket);
     if(mode==='camera')uiText($('live-hint'),'Pinch to pick up another dart');
   },170);
 }
@@ -233,7 +250,7 @@ map.on('mousemove',event=>{if(mode==='mouse'&&performance.now()>cooldown){$('aim
 map.on('click',event=>{if(mode==='mouse'){const s=map.getSize();land({x:event.containerPoint.x/s.x,y:event.containerPoint.y/s.y});}});
 document.addEventListener('keydown',event=>{if(event.code==='Space'&&mode==='mouse'&&!$('instructions').open&&!['BUTTON','A','INPUT'].includes(document.activeElement?.tagName)){event.preventDefault();land();}});
 $('again').addEventListener('click',()=>{$('result').hidden=true;focusHit(null);pins.clearLayers();if(mode==='mouse')$('aim').hidden=false;});
-$('clear').addEventListener('click',()=>{throwTicket++;document.querySelectorAll('.flying-dart').forEach(el=>el.remove());pins.clearLayers();throwCount=0;focusHit(null);$('result').hidden=true;status('A fresh map. Where to next?');});
+$('clear').addEventListener('click',()=>{throwTicket++;document.querySelectorAll('.flying-dart').forEach(el=>el.remove());pins.clearLayers();throwCount=0;$('throw-history').replaceChildren();$('throw-history-panel').hidden=true;focusHit(null);$('result').hidden=true;status('A fresh map. Where to next?');});
 $('reset').addEventListener('click',()=>{resetMap();setAim(aim);});
 $('help').addEventListener('click',()=>$('instructions').showModal());$('close-help').addEventListener('click',()=>$('instructions').close());
 window.addEventListener('pagehide',stopCamera);

@@ -1,4 +1,3 @@
-import { nearestPlace } from './gesture.js';
 const KEY = 'cyt-day-trip-darts.visited.v1';
 export function loadVisited(storage, places) {
   try {
@@ -12,7 +11,9 @@ export function saveVisited(storage, visited) {
   try { storage.setItem(KEY, JSON.stringify([...visited])); return true; }
   catch { return false; }
 }
-export function nextPlace(lat, lng, places, visited) {
+export function nextPlace(places, visited, previousName=null, random=Math.random) {
   const available = places.filter(place => !visited.has(place.name));
-  return nearestPlace(lat,lng,available);
+  const candidates = available.filter(place => place.name !== previousName);
+  // With only one unvisited place left, stop rather than repeat the previous hit.
+  return candidates.length ? candidates[Math.floor(random()*candidates.length)] : null;
 }

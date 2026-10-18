@@ -1,12 +1,12 @@
 # LLday trip London
 
-A pure-white camera game: pick up a 3D kunai and let it choose a rail-friendly day trip from London. The bundled regional map includes 40 destinations such as Brighton, Southend-on-Sea, Oxford, Cambridge, Bath and Canterbury.
+A white-and-yellow camera game: pick up a 3D kunai and let it choose a rail-friendly day trip from London. The bundled regional map includes 48 destinations such as Brighton, Southend-on-Sea, Oxford, Cambridge, Bath and Canterbury.
 
 ## Run
 
 `npm install` then `npm run dev -- --port 4180`. Open http://127.0.0.1:4180 and select **Enable camera**. Localhost or HTTPS is required.
 
-Pinch thumb and index to hold the kunai. Move to aim, then flick and release. Mouse mode supports map clicks and Space. Sound can be toggled in the top bar; the impact combines a low thud and a sharp crack through Web Audio, without downloaded audio files.
+Pinch thumb and index to hold the kunai. Flick and release to draw a uniformly random unvisited destination, excluding the previous hit. Mouse mode supports map clicks and Space. Sound can be toggled in the top bar; the impact combines a low thud and a sharp crack through Web Audio, without downloaded audio files.
 
 ## Tracking and performance
 
@@ -31,3 +31,5 @@ Live-person edge quality, hand latency and physical throwing feel still need tar
 English UI and destination names have a smaller Chinese companion line. A throw flies in 170 ms, then the small yellow result badge reels through eligible names for 280 ms before settling. The aim-selected destination is unchanged, and visited destinations are still excluded. Reduced motion skips the reel. Hands now receive a dashed blue tracked outline, matching the accepted face oval.
 
 The destination list uses the reference blue/coral/green dots. On a mouse, a local yellow cursor gently repels the text (at most 6 px); checkboxes stay stationary, keyboard operation remains native, and touch/reduced-motion users do not need the effect.
+
+Updated: yellow camera panel, white result, 48 destinations including villages. Uniform random unvisited selection excludes the last draw; when no different eligible place remains it stops. Reveal uses a 540 ms reel and local confetti, without map shake. Recent picks appear below the result.
