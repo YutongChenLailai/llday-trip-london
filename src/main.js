@@ -44,12 +44,16 @@ function celebrate(place){
   focusHit(place);
   const burst=$('celebration');burst.replaceChildren();
   if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;
-  for(let i=0;i<40;i++){
-    const piece=document.createElement('i'),angle=i*Math.PI/20;
-    piece.style.setProperty('--x',`${Math.cos(angle)*(innerWidth*.45+i%4*18)}px`);
-    piece.style.setProperty('--y',`${Math.sin(angle)*innerHeight*.45+60}px`);
-    piece.style.setProperty('--spin',`${i*47}deg`);
-    piece.style.background=['#ffff18','#3d55f5','#ff5a42','#00a878'][i%4];burst.append(piece);
+  for(let i=0;i<32;i++){
+    const piece=document.createElement('i'),angle=Math.random()*Math.PI*2,distance=100+Math.random()*Math.min(innerWidth*.65,450);
+    piece.style.setProperty('--x',`${Math.cos(angle)*distance}px`);
+    piece.style.setProperty('--y',`${Math.sin(angle)*distance*.8+70}px`);
+    piece.style.setProperty('--spin',`${Math.random()*540-270}deg`);
+    piece.style.setProperty('--duration',`${.7+Math.random()*.7}s`);
+    piece.style.setProperty('--delay',`${Math.random()*.16}s`);
+    const size=4+Math.random()*7;piece.style.width=piece.style.height=`${size}px`;
+    piece.style.left=`${Math.random()*40-20}px`;piece.style.top=`${Math.random()*24-12}px`;
+    piece.style.background=['#ffff18','#3d55f5','#ff5a42','#00a878'][Math.floor(Math.random()*4)];burst.append(piece);
   }
   $('result').classList.remove('settled');void $('result').offsetWidth;$('result').classList.add('settled');
 }
@@ -172,7 +176,7 @@ function land(point=aim){
   held=false;clearDart();$('aim').hidden=true;
   if(!place){status('No new target left. Untick another place to keep playing.');uiText($('live-hint'),'No new target left.');cooldown=performance.now()+650;return;}
   previousName=place.name;
-  const ticket=++throwTicket;cooldown=performance.now()+1600;closeReveal();focusHit(null);pins.clearLayers();
+  const ticket=++throwTicket;cooldown=performance.now()+2100;closeReveal();focusHit(null);pins.clearLayers();
   const start=$('camera-stage').getBoundingClientRect(), target=$('map').getBoundingClientRect();
   const landing=map.latLngToContainerPoint([place.lat,place.lng]);
   const flying=document.createElement('div');flying.className='flying-dart';flying.innerHTML=dartSvg;
@@ -187,7 +191,7 @@ function land(point=aim){
     playImpact();throwCount++;focusHit(place);
     const badge=document.querySelector('.map-badge');badge.classList.add('roll-badge');uiText(badge,place.name,place.zh);
     status(`Throw ${String(throwCount).padStart(2,'0')} · ${place.name} · a new place to go.`);
-    setTimeout(()=>{if(ticket===throwTicket&&!visited.has(place.name))rollDestination(place,ticket);},700);
+    setTimeout(()=>{if(ticket===throwTicket&&!visited.has(place.name))rollDestination(place,ticket);},1200);
     if(mode==='camera')uiText($('live-hint'),'Pinch to pick up another dart');
   },170);
 }

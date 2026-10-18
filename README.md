@@ -34,7 +34,7 @@ The destination list uses the reference blue/coral/green dots. On a mouse, a loc
 
 Updated: yellow camera panel, white result, 48 destinations including villages. Uniform random unvisited selection excludes the last draw; when no different eligible place remains it stops. Reveal uses a 540 ms reel and local confetti, without map shake. Recent picks appear below the result.
 
-Fullscreen native-dialog reveal replaces the standalone result card. Visited map, main map dots, checklist labels and pick-history buttons share visited state; clusters show visited counts and zoom to individual targets.
+Centered native-dialog reveal replaces the standalone result card. Visited map, main map dots, checklist labels and pick-history buttons share visited state; clusters show visited counts and zoom to individual targets.
 
 ## GitHub Pages
 
@@ -42,4 +42,6 @@ Owner: YutongChenLailai. Repository: https://github.com/YutongChenLailai/llday-t
 
 Run `npm ci`, `npm test`, then `npm run build:pages`. Publish the contents of `dist/` to the `gh-pages` branch. GitHub Pages serves that branch at `/`. Camera worker/model URLs resolve relative to the project path.
 
-The map holds the selected location for 700 ms after impact before the 540 ms fullscreen reveal starts. Navigation uses the reference font, responsive type scale and 12 px backdrop blur.
+The map holds the selected location for 1200 ms after impact before the 540 ms centered reveal starts. Navigation uses the reference font, responsive type scale and 12 px backdrop blur.
+
+Celebration dots scatter with randomized angles, distances, sizes, start positions, delays and durations.
