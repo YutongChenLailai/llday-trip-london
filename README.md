@@ -1,4 +1,4 @@
-# CYT · Day Trips
+# LLday trip London
 
 A pure-white camera game: pick up a 3D kunai and let it choose a rail-friendly day trip from London. The bundled regional map includes 40 destinations such as Brighton, Southend-on-Sea, Oxford, Cambridge, Bath and Canterbury.
 
