@@ -49,7 +49,7 @@
 .place-marker.selected span{animation:prize-pin .6s ease-out}@keyframes prize-pin{0%{box-shadow:0 0 0 0 #ffff18cc}100%{box-shadow:0 0 0 28px #ffff1800}}
 @media(prefers-reduced-motion:reduce){.place-marker.selected span{animation:none}}
 
-dialog.result{position:fixed;inset:0;width:min(760px,calc(100vw - 40px));height:auto;max-width:760px;max-height:86dvh;margin:auto;padding:clamp(36px,5vw,64px);border:1px solid var(--line);border-radius:8px;background:#fff;box-shadow:0 18px 80px #0000001a;overflow:auto;text-align:center}
+dialog.result{position:fixed;inset:0;width:min(760px,calc(100vw - 40px));height:fit-content;max-width:760px;max-height:86dvh;margin:auto;padding:clamp(36px,5vw,64px);border:1px solid var(--line);border-radius:8px;background:#fff;box-shadow:0 18px 80px #0000001a;overflow:auto;text-align:center}
 dialog.result[open]{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;animation:result-enter .22s ease-out}
 dialog.result::backdrop{background:#fff9;backdrop-filter:blur(8px)}
 dialog.result>button:not(.close-result){position:static;font-size:13px;background:var(--yellow);border:1px solid #111;padding:12px 20px}
