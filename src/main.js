@@ -172,7 +172,7 @@ function land(point=aim){
   held=false;clearDart();$('aim').hidden=true;
   if(!place){status('No new target left. Untick another place to keep playing.');uiText($('live-hint'),'No new target left.');cooldown=performance.now()+650;return;}
   previousName=place.name;
-  const ticket=++throwTicket;cooldown=performance.now()+800;closeReveal();focusHit(null);pins.clearLayers();
+  const ticket=++throwTicket;cooldown=performance.now()+1600;closeReveal();focusHit(null);pins.clearLayers();
   const start=$('camera-stage').getBoundingClientRect(), target=$('map').getBoundingClientRect();
   const landing=map.latLngToContainerPoint([place.lat,place.lng]);
   const flying=document.createElement('div');flying.className='flying-dart';flying.innerHTML=dartSvg;
@@ -184,7 +184,10 @@ function land(point=aim){
     if(visited.has(place.name)){status('That place was just marked visited. Throw again for a new spot.');return;}
     pins.clearLayers();
     L.marker([place.lat,place.lng],{icon:L.divIcon({className:'pin-icon',html:dartSvg,iconSize:[32,53],iconAnchor:[16,49]})}).addTo(pins);
-    playImpact();throwCount++;rollDestination(place,ticket);
+    playImpact();throwCount++;focusHit(place);
+    const badge=document.querySelector('.map-badge');badge.classList.add('roll-badge');uiText(badge,place.name,place.zh);
+    status(`Throw ${String(throwCount).padStart(2,'0')} · ${place.name} · a new place to go.`);
+    setTimeout(()=>{if(ticket===throwTicket&&!visited.has(place.name))rollDestination(place,ticket);},700);
     if(mode==='camera')uiText($('live-hint'),'Pinch to pick up another dart');
   },170);
 }
@@ -240,7 +243,7 @@ async function startCamera(){
     const acquired=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640},height:{ideal:480},facingMode:'user'},audio:false});
     if(ticket!==generation){acquired.getTracks().forEach(t=>t.stop());return;}
     stream=acquired;$('stop').hidden=false;status('Preparing hand tracking and your cutout…');
-    tracker=new Worker('/tracking-worker.js');
+    tracker=new Worker(`${import.meta.env.BASE_URL}tracking-worker.js`);
     await new Promise((resolve,reject)=>{
       const timer=setTimeout(()=>reject(new Error('Tracking model load timed out')),30000);
       tracker.onmessage=({data})=>{if(data.type==='ready'){clearTimeout(timer);resolve();}else if(data.type==='error'){clearTimeout(timer);reject(new Error(data.message));}};

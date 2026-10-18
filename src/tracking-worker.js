@@ -5,10 +5,10 @@ self.onmessage=async({data})=>{
   let input=data.frame;
   try{
     if(data.type==='init'){
-      const vision=await FilesetResolver.forVisionTasks('/wasm');
-      hand=await HandLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:'/models/hand_landmarker.task'},runningMode:'VIDEO',numHands:2,minHandDetectionConfidence:.6,minTrackingConfidence:.65});
-      face=await FaceDetector.createFromOptions(vision,{baseOptions:{modelAssetPath:'/models/face_detector.tflite'},runningMode:'VIDEO',minDetectionConfidence:.65});
-      segmenter=await ImageSegmenter.createFromOptions(vision,{baseOptions:{modelAssetPath:'/models/selfie_segmenter.tflite'},runningMode:'VIDEO',outputCategoryMask:false,outputConfidenceMasks:true});
+      const vision=await FilesetResolver.forVisionTasks(new URL('wasm',self.location.href).href);
+      hand=await HandLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:new URL('models/hand_landmarker.task',self.location.href).href},runningMode:'VIDEO',numHands:2,minHandDetectionConfidence:.6,minTrackingConfidence:.65});
+      face=await FaceDetector.createFromOptions(vision,{baseOptions:{modelAssetPath:new URL('models/face_detector.tflite',self.location.href).href},runningMode:'VIDEO',minDetectionConfidence:.65});
+      segmenter=await ImageSegmenter.createFromOptions(vision,{baseOptions:{modelAssetPath:new URL('models/selfie_segmenter.tflite',self.location.href).href},runningMode:'VIDEO',outputCategoryMask:false,outputConfidenceMasks:true});
       canvas=new OffscreenCanvas(640,480);ctx=canvas.getContext('2d');ctx.imageSmoothingQuality='high';maskCanvas=new OffscreenCanvas(256,256);maskCtx=maskCanvas.getContext('2d');handsCanvas=new OffscreenCanvas(256,256);handsCtx=handsCanvas.getContext('2d',{willReadFrequently:true});
       self.postMessage({type:'ready'});return;
     }

@@ -1,5 +1,5 @@
 <!doctype html><meta charset="utf-8"><title>Background tracking integration check</title><p id="result">Loading background tracking…</p><script type="module">
-const result=document.getElementById('result'),worker=new Worker('/tracking-worker.js');
+const result=document.getElementById('result'),worker=new Worker('../tracking-worker.js');
 const timer=setTimeout(()=>{result.textContent='FAIL: model loading timed out';worker.terminate();},30000);
 worker.onerror=e=>{clearTimeout(timer);result.textContent='FAIL: '+e.message;};
 worker.onmessage=async({data})=>{
