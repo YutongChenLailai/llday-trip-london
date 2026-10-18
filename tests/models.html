@@ -1,0 +1,13 @@
+<!doctype html><meta charset="utf-8"><title>Background tracking integration check</title><p id="result">Loading background tracking…</p><script type="module">
+const result=document.getElementById('result'),worker=new Worker('/tracking-worker.js');
+const timer=setTimeout(()=>{result.textContent='FAIL: model loading timed out';worker.terminate();},30000);
+worker.onerror=e=>{clearTimeout(timer);result.textContent='FAIL: '+e.message;};
+worker.onmessage=async({data})=>{
+  if(data.type==='error'){clearTimeout(timer);result.textContent='FAIL: '+data.message;worker.terminate();}
+  if(data.type==='ready'){
+    const canvas=document.createElement('canvas');canvas.width=640;canvas.height=480;canvas.getContext('2d').fillRect(0,0,640,480);
+    const frame=await createImageBitmap(canvas);worker.postMessage({type:'frame',frame,time:performance.now(),verify:true},[frame]);
+  }
+  if(data.type==='frame'){clearTimeout(timer);result.textContent=`PASS: classic worker loaded face, hand and lightweight selfie models, processed a 640×480 frame, and returned a ${data.cutout.width}×${data.cutout.height} cutout in ${data.processedMs} ms in the background.`;data.cutout.close();worker.terminate();}
+};worker.postMessage({type:'init'});
+</script>
