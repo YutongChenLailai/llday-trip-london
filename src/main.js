@@ -47,7 +47,7 @@ function renderMapPins(){
   for(const group of groups){
     if(group.places.length>1){
       const names=group.places.map(p=>p.name).join(', '),position=map.containerPointToLatLng([group.x,group.y]);
-      L.marker(position,{icon:L.divIcon({className:'map-cluster',html:`<span>+${group.places.length}</span>`,iconSize:[28,28],iconAnchor:[14,14]}),title:`${group.places.length} destinations: ${names}. Zoom in.`,alt:`Zoom to ${names}`}).addTo(placePins).bindTooltip(group.places.some(p=>p.name==='Brighton')?'Brighton & nearby':group.places.some(p=>p.name==='Southend-on-Sea')?'Southend-on-Sea & nearby':`${group.places.length} places · zoom in`,{permanent:group.places.some(p=>['Brighton','Southend-on-Sea'].includes(p.name)),direction:'bottom',offset:[0,9]}).on('click',()=>map.setView(position,Math.min(12,map.getZoom()+1.5)));
+      L.marker(position,{icon:L.divIcon({className:'map-cluster',html:`<span>+${group.places.length}</span>`,iconSize:[28,28],iconAnchor:[14,14]}),title:`${group.places.length} destinations: ${names}. Zoom in.`,alt:`Zoom to ${names}`}).addTo(placePins).bindTooltip(group.places.some(p=>p.name==='Brighton')?'Brighton & nearby':group.places.some(p=>p.name==='Southend-on-Sea')?'Southend-on-Sea & nearby':`${group.places.length} places · zoom in`,{permanent:group.places.some(p=>['Brighton','Southend-on-Sea'].includes(p.name)),direction:'top',offset:[0,-12]}).on('click',()=>map.setView(position,Math.min(12,map.getZoom()+1.5)));
       continue;
     }
     const place=group.places[0],index=places.indexOf(place),done=visited.has(place.name);
