@@ -33,3 +33,4 @@
 
 .result{max-width:520px}.map-badge.roll-badge{font-size:14px;max-width:175px;letter-spacing:-.02em;line-height:1.2}.map-badge.roll-badge .zh{font-size:10px;margin-top:4px}.primary .en{font-size:11px}.primary .zh{color:#333}
 .demo-active .camera-placeholder{display:none}
+.memory-summary>span:first-child{white-space:nowrap}.memory-summary{flex-shrink:0}.memory-header h2{font-size:24px}@media(max-width:700px){.memory-header h2{font-size:21px}.memory-summary>span:first-child{font-size:22px}}
